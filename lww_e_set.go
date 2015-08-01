@@ -2,51 +2,12 @@ package crdt
 
 import (
 	"errors"
-	"sync"
 	"time"
 )
 
-type TSSet struct {
-	set map[interface{}][]time.Time
-	mu  sync.Mutex
-}
-
-func NewTSSet() *TSSet {
-	return &TSSet{}
-}
-
-func (t *TSSet) Add(value interface{}) {
-	t.AddTS(value, time.Now())
-}
-
-func (t *TSSet) AddTS(value interface{}, ts ...time.Time) {
-	t.mu.Lock()
-
-	timestamps, ok := t.set[value]
-	if !ok {
-		timestamps = []time.Time{}
-	}
-
-	timestamps = append(timestamps, ts...)
-	t.set[value] = timestamps
-
-	t.mu.Unlock()
-}
-
-func (t *TSSet) Lookup(value interface{}) []time.Time {
-	if timestamps, ok := t.set[value]; ok {
-		return timestamps
-	}
-	return nil
-}
-
-func (t *TSSet) Elements() map[interface{}][]time.Time {
-	return t.set
-}
-
 type LWWSet struct {
-	addSet *TSSet
-	rmSet  *TSSet
+	addMap map[interface{}]time.Time
+	rmMap  map[interface{}]time.Time
 
 	bias BiasType
 }
@@ -72,47 +33,64 @@ func NewLWWSetWithBias(bias BiasType) (*LWWSet, error) {
 	}
 
 	return &LWWSet{
-		addSet: NewTSSet(),
-		rmSet:  NewTSSet(),
+		addMap: make(map[interface{}]time.Time),
+		rmMap:  make(map[interface{}]time.Time),
 		bias:   bias,
 	}, nil
 }
 
 func (s *LWWSet) Add(value interface{}) {
-	s.addSet.Add(value)
+	s.addMap[value] = time.Now()
 }
 
 func (s *LWWSet) Remove(value interface{}) {
-	s.rmSet.Add(value)
+	s.rmMap[value] = time.Now()
 }
 
 func (s *LWWSet) Contains(value interface{}) bool {
-	addTSs := s.addSet.Lookup(value)
-	rmTSs := s.rmSet.Lookup(value)
-
-	var maxAddTS, maxRmTS time.Time
-
-	for _, ts := range addTSs {
-		if ts.After(maxAddTS) {
-			maxAddTS = ts
-		}
+	addTime, addOk := s.addMap[value]
+	if !addOk {
+		return false
 	}
 
-	for _, ts := range rmTSs {
-		if ts.After(maxRmTS) {
-			maxRmTS = ts
-		}
+	rmTime, rmOk := s.rmMap[value]
+	if !rmOk {
+		return true
 	}
 
-	return maxAddTS.After(maxRmTS)
+	switch s.bias {
+	case BiasAdd:
+		return addTime.After(rmTime)
+
+	case BiasRemove:
+		return rmTime.After(addTime)
+	}
+
+	return false
 }
 
 func (s *LWWSet) Merge(r *LWWSet) {
-	for value, tss := range r.addSet.Elements() {
-		s.addSet.AddTS(value, tss...)
+	for value, ts := range r.addMap {
+		if t, ok := s.addMap[value]; ok && t.Before(ts) {
+			s.addMap[value] = ts
+		} else {
+			if t.Before(ts) {
+				s.addMap[value] = ts
+			} else {
+				s.addMap[value] = t
+			}
+		}
 	}
 
-	for value, tss := range r.rmSet.Elements() {
-		s.rmSet.AddTS(value, tss...)
+	for value, ts := range r.rmMap {
+		if t, ok := s.rmMap[value]; ok && t.Before(ts) {
+			s.rmMap[value] = ts
+		} else {
+			if t.Before(ts) {
+				s.rmMap[value] = ts
+			} else {
+				s.rmMap[value] = t
+			}
+		}
 	}
 }
