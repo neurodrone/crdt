@@ -104,13 +104,6 @@ func (s *LWWSet) Contains(value interface{}) bool {
 		}
 	}
 
-	// Now that we have found the maximum timestamps
-	// garbage collect the remaining ones.
-	s.addSet, s.rmSet = NewTSSet(), NewTSSet()
-
-	s.addSet.Add(maxAddTS)
-	s.rmSet.Add(maxRmTS)
-
 	return maxAddTS.After(maxRmTS)
 }
 
