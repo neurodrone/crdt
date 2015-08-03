@@ -21,6 +21,7 @@ This is an implementation of CRDTs in Golang.
  * OR-Set
   - AWORSET
   - RWORSET
+ * MC-Set
  * MVRegister
  * Graphs
  * TreeDoc
