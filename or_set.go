@@ -48,7 +48,7 @@ func (o *ORSet) Contains(value interface{}) bool {
 		return false
 	}
 
-	rmMap, ok := o.addMap[value]
+	rmMap, ok := o.rmMap[value]
 	if !ok {
 		return true
 	}

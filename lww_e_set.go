@@ -49,11 +49,18 @@ func (s *LWWSet) Remove(value interface{}) {
 
 func (s *LWWSet) Contains(value interface{}) bool {
 	addTime, addOk := s.addMap[value]
+
+	// If a value is not present in added set then
+	// always return false, irrespective of whether
+	// it is present in the removed set.
 	if !addOk {
 		return false
 	}
 
 	rmTime, rmOk := s.rmMap[value]
+
+	// If a value is present in added set and not in remove
+	// we should always return true.
 	if !rmOk {
 		return true
 	}
@@ -66,6 +73,9 @@ func (s *LWWSet) Contains(value interface{}) bool {
 		return rmTime.After(addTime)
 	}
 
+	// This case will almost always never be hit. Usually
+	// if an invalid Bias value is provided, it is called
+	// at a higher level.
 	return false
 }
 
