@@ -6,6 +6,11 @@ func TestORSetAddContains(t *testing.T) {
 	orSet := NewORSet()
 
 	var testValue string = "test-str"
+
+	if orSet.Contains(testValue) {
+		t.Errorf("Expected set to not contain: %v, but found", testValue)
+	}
+
 	orSet.Add(testValue)
 
 	if !orSet.Contains(testValue) {

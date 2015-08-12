@@ -3,6 +3,8 @@ package crdt
 import (
 	"errors"
 	"time"
+
+	"github.com/benbjohnson/clock"
 )
 
 type LWWSet struct {
@@ -10,6 +12,8 @@ type LWWSet struct {
 	rmMap  map[interface{}]time.Time
 
 	bias BiasType
+
+	clock clock.Clock
 }
 
 type BiasType string
@@ -36,15 +40,16 @@ func NewLWWSetWithBias(bias BiasType) (*LWWSet, error) {
 		addMap: make(map[interface{}]time.Time),
 		rmMap:  make(map[interface{}]time.Time),
 		bias:   bias,
+		clock:  clock.New(),
 	}, nil
 }
 
 func (s *LWWSet) Add(value interface{}) {
-	s.addMap[value] = time.Now()
+	s.addMap[value] = s.clock.Now()
 }
 
 func (s *LWWSet) Remove(value interface{}) {
-	s.rmMap[value] = time.Now()
+	s.rmMap[value] = s.clock.Now()
 }
 
 func (s *LWWSet) Contains(value interface{}) bool {
@@ -67,10 +72,10 @@ func (s *LWWSet) Contains(value interface{}) bool {
 
 	switch s.bias {
 	case BiasAdd:
-		return addTime.After(rmTime)
+		return !addTime.Before(rmTime)
 
 	case BiasRemove:
-		return rmTime.After(addTime)
+		return rmTime.Before(addTime)
 	}
 
 	// This case will almost always never be hit. Usually
