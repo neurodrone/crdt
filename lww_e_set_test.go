@@ -14,6 +14,10 @@ func TestLWWESetAddContains(t *testing.T) {
 	}
 
 	testStr := "object1"
+	if lww.Contains(testStr) {
+		t.Errorf("set should not contain elem: %q", testStr)
+	}
+
 	lww.Add(testStr)
 
 	if !lww.Contains(testStr) {
@@ -34,6 +38,38 @@ func TestLWWESetAddRemoveContains(t *testing.T) {
 	if lww.Contains(testStr) {
 		t.Errorf("Expected set to not contain: %v, but found", testStr)
 	}
+}
+
+func TestInvalidBias(t *testing.T) {
+	var InvalidBias BiasType = "invalid"
+
+	if _, err := NewLWWSetWithBias(InvalidBias); err != ErrNoSuchBias {
+		t.Errorf("error expected here when invalid bias provided: %s", err)
+	}
+
+	mock := clock.NewMock()
+
+	lww := &LWWSet{
+		addMap: make(map[interface{}]time.Time),
+		rmMap:  make(map[interface{}]time.Time),
+		bias:   InvalidBias,
+		clock:  mock,
+	}
+
+	elem := "object1"
+
+	// Remove the element before it is added. Since the time of adding
+	// the element is greater than the time to remove it this set should
+	// technically comprise of that element. But because the Bias is invalid
+	// verify that it should always generate a false response.
+	lww.Add(elem)
+	mock.Add(-1 * time.Minute)
+	lww.Remove(elem)
+
+	if lww.Contains(elem) {
+		t.Errorf("set should not contain element and should trigger an invalid case")
+	}
+
 }
 
 func TestLWWESetAddRemoveConflict(t *testing.T) {
