@@ -142,5 +142,143 @@ func TestLWWESetAddRemoveConflict(t *testing.T) {
 			t.Errorf("value: '%v' in in invalid state in the set when bias: %q", tt.testObject, tt.bias)
 		}
 	}
+}
 
+func TestLWWESetMerge(t *testing.T) {
+	type addRm struct {
+		op string
+		d  time.Duration
+	}
+
+	var addOp, rmOp string = "add", "remove"
+
+	for _, tt := range []struct {
+		mapOne, mapTwo map[string]addRm
+		valid, invalid map[string]struct{}
+	}{
+		{
+			map[string]addRm{
+				"object1": addRm{addOp, 1 * time.Minute},
+				"object2": addRm{addOp, 2 * time.Minute},
+			},
+			map[string]addRm{
+				"object1": addRm{rmOp, 2 * time.Minute},
+				"object2": addRm{rmOp, 2 * time.Minute},
+			},
+			map[string]struct{}{
+				"object2": struct{}{},
+			},
+			map[string]struct{}{
+				"object1": struct{}{},
+			},
+		},
+		{
+			map[string]addRm{
+				"object1": addRm{addOp, 1 * time.Minute},
+				"object2": addRm{rmOp, 2 * time.Minute},
+			},
+			map[string]addRm{
+				"object3": addRm{addOp, 1 * time.Minute},
+				"object4": addRm{rmOp, 2 * time.Minute},
+			},
+			map[string]struct{}{
+				"object1": struct{}{},
+				"object3": struct{}{},
+			},
+			map[string]struct{}{
+				"object2": struct{}{},
+				"object4": struct{}{},
+			},
+		},
+		{
+			map[string]addRm{
+				"object1": addRm{addOp, 1 * time.Minute},
+				"object2": addRm{addOp, 3 * time.Minute},
+			},
+			map[string]addRm{
+				"object1": addRm{addOp, 2 * time.Minute},
+				"object2": addRm{addOp, 2 * time.Minute},
+			},
+			map[string]struct{}{
+				"object1": struct{}{},
+				"object2": struct{}{},
+			},
+			map[string]struct{}{},
+		},
+		{
+			map[string]addRm{
+				"object1": addRm{rmOp, 1 * time.Minute},
+				"object2": addRm{rmOp, 3 * time.Minute},
+			},
+			map[string]addRm{
+				"object1": addRm{rmOp, 2 * time.Minute},
+				"object2": addRm{rmOp, 2 * time.Minute},
+			},
+			map[string]struct{}{},
+			map[string]struct{}{
+				"object1": struct{}{},
+				"object2": struct{}{},
+			},
+		},
+	} {
+		mock1, mock2 := clock.NewMock(), clock.NewMock()
+
+		lww1, err := NewLWWSet()
+		if err != nil {
+			t.Fatalf("unable to initialize lww set: %s", err)
+		}
+		lww1.clock = mock1
+
+		lww2, err := NewLWWSet()
+		if err != nil {
+			t.Fatalf("unable to initialize lww set: %s", err)
+		}
+		lww2.clock = mock2
+
+		var totalDuration time.Duration
+
+		for obj, addrm := range tt.mapOne {
+			curTime := addrm.d - totalDuration
+
+			totalDuration += curTime
+			mock1.Add(curTime)
+
+			switch addrm.op {
+			case addOp:
+				lww1.Add(obj)
+			case rmOp:
+				lww1.Remove(obj)
+			}
+		}
+
+		totalDuration = 0 * time.Second
+
+		for obj, addrm := range tt.mapTwo {
+			curTime := addrm.d - totalDuration
+
+			totalDuration += curTime
+			mock2.Add(curTime)
+
+			switch addrm.op {
+			case addOp:
+				lww2.Add(obj)
+			case rmOp:
+				lww2.Remove(obj)
+			}
+		}
+
+		lww1.Merge(lww2)
+
+		for obj := range tt.valid {
+			if !lww1.Contains(obj) {
+				t.Errorf("expected merged set to contain: %q", obj)
+			}
+		}
+
+		for obj := range tt.invalid {
+			if lww1.Contains(obj) {
+				t.Errorf("expected merged set to not contain: %q", obj)
+			}
+		}
+	}
 }
