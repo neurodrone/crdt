@@ -7,6 +7,7 @@ This is an implementation of CRDTs in Golang.
  * G-Set
  * 2P-Set
  * LWW-e-Set
+ * OR-Set
 
 ### CRDTs Remaining
 
@@ -18,9 +19,6 @@ This is an implementation of CRDTs in Golang.
 #### Sets
 
  * U-Set
- * OR-Set
-  - AWORSET
-  - RWORSET
  * MC-Set
  * MVRegister
  * Graphs
