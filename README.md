@@ -4,17 +4,19 @@ This is an implementation of CRDTs in Golang.
 
 ### CRDTs Implemented
 
+#### Counters
+
+ * G-Counter
+ * PN-Counter
+
+#### Sets
+
  * G-Set
  * 2P-Set
  * LWW-e-Set
  * OR-Set
 
 ### CRDTs Remaining
-
-#### Counters
-
- * G-Counter
- * PN-Counter
 
 #### Sets
 
