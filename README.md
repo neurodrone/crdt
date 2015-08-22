@@ -1,4 +1,4 @@
-# CRDT [![Build Status](https://travis-ci.org/neurodrone/crdt.svg?branch=master)](https://travis-ci.org/neurodrone/crdt) [![Coverage Status](https://coveralls.io/repos/neurodrone/crdt/badge.svg?branch=master&service=github)](https://coveralls.io/github/neurodrone/crdt?branch=master)
+# CRDT [![Build Status](https://travis-ci.org/neurodrone/crdt.svg?branch=master)](https://travis-ci.org/neurodrone/crdt) [![Coverage Status](https://coveralls.io/repos/neurodrone/crdt/badge.svg?branch=master&service=github)](https://coveralls.io/github/neurodrone/crdt?branch=master) [![GoDoc](https://godoc.org/github.com/neurodrone/crdt?status.svg)](https://godoc.org/github.com/neurodrone/crdt)
 
 This is an implementation of CRDTs in Golang.
 
