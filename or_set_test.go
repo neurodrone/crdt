@@ -5,7 +5,7 @@ import "testing"
 func TestORSetAddContains(t *testing.T) {
 	orSet := NewORSet()
 
-	var testValue string = "test-str"
+	var testValue string = "object"
 
 	if orSet.Contains(testValue) {
 		t.Errorf("Expected set to not contain: %v, but found", testValue)
@@ -21,7 +21,7 @@ func TestORSetAddContains(t *testing.T) {
 func TestORSetAddRemoveContains(t *testing.T) {
 	orSet := NewORSet()
 
-	var testValue string = "test-str"
+	var testValue string = "object"
 	orSet.Add(testValue)
 
 	orSet.Remove(testValue)
@@ -34,7 +34,7 @@ func TestORSetAddRemoveContains(t *testing.T) {
 func TestORSetAddRemoveAddContains(t *testing.T) {
 	orSet := NewORSet()
 
-	var testValue string = "test-str"
+	var testValue string = "object"
 
 	orSet.Add(testValue)
 	orSet.Remove(testValue)
@@ -48,7 +48,7 @@ func TestORSetAddRemoveAddContains(t *testing.T) {
 func TestORSetAddAddRemoveContains(t *testing.T) {
 	orSet := NewORSet()
 
-	var testValue string = "test-str"
+	var testValue string = "object"
 
 	orSet.Add(testValue)
 	orSet.Add(testValue)

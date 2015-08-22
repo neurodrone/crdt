@@ -1,4 +1,4 @@
-# CRDT
+# CRDT [![Build Status](https://travis-ci.org/neurodrone/crdt.svg?branch=master)](https://travis-ci.org/neurodrone/crdt)
 
 This is an implementation of CRDTs in Golang.
 
