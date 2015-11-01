@@ -1,6 +1,7 @@
 package crdt
 
 import (
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -108,4 +109,43 @@ func (s *LWWSet) Merge(r *LWWSet) {
 			}
 		}
 	}
+}
+
+type lwwesetJSON struct {
+	T string   `json:"type"`
+	B string   `json:"bias"`
+	E []elJSON `json:"e"`
+}
+
+type elJSON struct {
+	Elem interface{} `json:"el"`
+	TAdd int64       `json:"ta,omitempty"`
+	TDel int64       `json:"td,omitempty"`
+}
+
+func (s *LWWSet) MarshalJSON() ([]byte, error) {
+	l := &lwwesetJSON{
+		T: "lww-e-set",
+		B: string(s.bias),
+		E: make([]elJSON, 0, len(s.addMap)),
+	}
+
+	for e, t := range s.addMap {
+		el := elJSON{Elem: e, TAdd: t.Unix()}
+		if td, ok := s.rmMap[e]; ok {
+			el.TDel = td.Unix()
+		}
+
+		l.E = append(l.E, el)
+	}
+
+	for e, t := range s.rmMap {
+		if _, ok := s.addMap[e]; ok {
+			continue
+		}
+
+		l.E = append(l.E, elJSON{Elem: e, TDel: t.Unix()})
+	}
+
+	return json.Marshal(l)
 }
