@@ -1,6 +1,10 @@
 package crdt
 
-import "testing"
+import (
+	"bytes"
+	"encoding/json"
+	"testing"
+)
 
 func TestTwoPhaseSetAdd(t *testing.T) {
 	tpset := NewTwoPhaseSet()
@@ -53,6 +57,43 @@ func TestTwoPhaseSetAddRemove(t *testing.T) {
 
 		if tpset.Contains(tt.elem) {
 			t.Errorf("set should not contain elem %q", tt.elem)
+		}
+	}
+}
+
+func TestTwoPhaseSetMarshalJSON(t *testing.T) {
+	for _, tt := range []struct {
+		add, rm  []interface{}
+		expected string
+	}{
+		{[]interface{}{}, []interface{}{}, `{"type":"2p-set","a":[],"r":[]}`},
+		{[]interface{}{"alpha"}, []interface{}{}, `{"type":"2p-set","a":["alpha"],"r":[]}`},
+		{[]interface{}{}, []interface{}{"beta"}, `{"type":"2p-set","a":[],"r":["beta"]}`},
+		{[]interface{}{"alpha"}, []interface{}{"beta"}, `{"type":"2p-set","a":["alpha"],"r":["beta"]}`},
+		{[]interface{}{"alpha"}, []interface{}{"alpha"}, `{"type":"2p-set","a":["alpha"],"r":["alpha"]}`},
+
+		{[]interface{}{1}, []interface{}{}, `{"type":"2p-set","a":[1],"r":[]}`},
+		{[]interface{}{}, []interface{}{2}, `{"type":"2p-set","a":[],"r":[2]}`},
+		{[]interface{}{1}, []interface{}{2}, `{"type":"2p-set","a":[1],"r":[2]}`},
+		{[]interface{}{1}, []interface{}{1}, `{"type":"2p-set","a":[1],"r":[1]}`},
+	} {
+		tpset := NewTwoPhaseSet()
+
+		for _, e := range tt.add {
+			tpset.Add(e)
+		}
+
+		for _, e := range tt.rm {
+			tpset.Remove(e)
+		}
+
+		out, err := json.Marshal(tpset)
+		if err != nil {
+			t.Fatalf("unexpected error marshalling tpset: %s", err)
+		}
+
+		if !bytes.Equal([]byte(tt.expected), out) {
+			t.Errorf("expected marshalled bytes: %q, actual: %q", tt.expected, out)
 		}
 	}
 }

@@ -1,6 +1,8 @@
 package crdt
 
 import (
+	"bytes"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -279,6 +281,132 @@ func TestLWWESetMerge(t *testing.T) {
 			if lww1.Contains(obj) {
 				t.Errorf("expected merged set to not contain: %q", obj)
 			}
+		}
+	}
+}
+
+func TestLWWESetMarshalJSON(t *testing.T) {
+	for _, tt := range []struct {
+		add, rm  map[interface{}]time.Duration
+		bias     BiasType
+		expected string
+	}{
+		{
+			map[interface{}]time.Duration{},
+			map[interface{}]time.Duration{},
+			BiasAdd,
+			`{"type":"lww-e-set","bias":"a","e":[]}`,
+		},
+		{
+			map[interface{}]time.Duration{},
+			map[interface{}]time.Duration{},
+			BiasRemove,
+			`{"type":"lww-e-set","bias":"r","e":[]}`,
+		},
+		{
+			map[interface{}]time.Duration{
+				"object1": 1 * time.Second,
+			},
+			map[interface{}]time.Duration{
+				"object2": 1 * time.Second,
+			},
+			BiasAdd,
+			`{"type":"lww-e-set","bias":"a","e":[{"el":"object1","ta":1},{"el":"object2","td":1}]}`,
+		},
+		{
+			map[interface{}]time.Duration{
+				"object1": 1 * time.Second,
+			},
+			map[interface{}]time.Duration{
+				"object2": 1 * time.Second,
+			},
+			BiasRemove,
+			`{"type":"lww-e-set","bias":"r","e":[{"el":"object1","ta":1},{"el":"object2","td":1}]}`,
+		},
+		{
+			map[interface{}]time.Duration{
+				"object1": 1 * time.Second,
+			},
+			map[interface{}]time.Duration{},
+			BiasAdd,
+			`{"type":"lww-e-set","bias":"a","e":[{"el":"object1","ta":1}]}`,
+		},
+		{
+			map[interface{}]time.Duration{
+				"object1": 1 * time.Second,
+			},
+			map[interface{}]time.Duration{},
+			BiasRemove,
+			`{"type":"lww-e-set","bias":"r","e":[{"el":"object1","ta":1}]}`,
+		},
+		{
+			map[interface{}]time.Duration{},
+			map[interface{}]time.Duration{
+				"object1": 1 * time.Second,
+			},
+			BiasAdd,
+			`{"type":"lww-e-set","bias":"a","e":[{"el":"object1","td":1}]}`,
+		},
+		{
+			map[interface{}]time.Duration{},
+			map[interface{}]time.Duration{
+				"object1": 1 * time.Second,
+			},
+			BiasRemove,
+			`{"type":"lww-e-set","bias":"r","e":[{"el":"object1","td":1}]}`,
+		},
+		{
+			map[interface{}]time.Duration{
+				"object1": 1 * time.Second,
+			},
+			map[interface{}]time.Duration{
+				"object1": 2 * time.Second,
+			},
+			BiasAdd,
+			`{"type":"lww-e-set","bias":"a","e":[{"el":"object1","ta":1,"td":2}]}`,
+		},
+		{
+			map[interface{}]time.Duration{
+				"object1": 1 * time.Second,
+			},
+			map[interface{}]time.Duration{
+				"object1": 2 * time.Second,
+			},
+			BiasRemove,
+			`{"type":"lww-e-set","bias":"r","e":[{"el":"object1","ta":1,"td":2}]}`,
+		},
+	} {
+		lww, err := NewLWWSetWithBias(tt.bias)
+		if err != nil {
+			t.Fatalf("unexpected error creating new LWW-E-Set: %s", err)
+		}
+
+		mock := clock.NewMock()
+		lww.clock = mock
+
+		for e, d := range tt.add {
+			mock.Add(d)
+			lww.Add(e)
+
+			mock = clock.NewMock()
+			lww.clock = mock
+		}
+
+		for e, d := range tt.rm {
+			mock.Add(d)
+			lww.Remove(e)
+
+			mock = clock.NewMock()
+			lww.clock = mock
+		}
+
+		out, err := json.Marshal(lww)
+		if err != nil {
+			t.Fatalf("unexpected error on marshalling: %s", err)
+		}
+
+		if !bytes.Equal([]byte(tt.expected), out) {
+			t.Errorf("expected marshalling array to be: %q, actual: %q", tt.expected, out)
 		}
 	}
 }
